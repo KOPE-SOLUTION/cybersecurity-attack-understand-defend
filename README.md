@@ -1,4 +1,4 @@
-# Cybersecurity: Attack, Understand & Defend 🔐
+# Cybersecurity: Attack, Understand & Defend
 
 A hands-on cybersecurity learning repository focused on understanding how vulnerabilities work, reproducing security issues in controlled environments, applying mitigations, and validating that the defenses work.
 
