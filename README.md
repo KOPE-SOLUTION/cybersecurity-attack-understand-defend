@@ -28,7 +28,7 @@ flowchart TD
 
 | EP | หัวข้อ | หมวดหมู่ | สถานะ |
 | --- | --- | --- | --- |
-| EP01 | Reverse Tabnabbing | Web | 🚧 กำลังพัฒนา |
+| EP01 | [Reverse Tabnabbing](./01-reverse-tabnabbing/) | Web | พร้อมใช้งาน |
 | EP02 | Cross-Site Scripting (XSS) | Web | 📌 วางแผนไว้ |
 | EP03 | Cross-Site Request Forgery (CSRF) | Web | 📌 วางแผนไว้ |
 | EP04 | SQL Injection | Application | 📌 วางแผนไว้ |

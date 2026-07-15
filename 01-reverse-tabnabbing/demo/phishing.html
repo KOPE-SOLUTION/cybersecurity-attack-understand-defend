@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Phishing Simulation — Training Only</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <div class="eyebrow">Training Simulation</div>
+    <h1>แท็บเดิมถูกเปลี่ยนแล้ว</h1>
+    <p class="warning">นี่คือหน้า Phishing จำลองสำหรับการเรียนรู้ ไม่มีการรับหรือบันทึกข้อมูล</p>
+
+    <section class="card fake-login">
+      <span class="badge">FAKE LOGIN</span>
+      <h2>กรุณาเข้าสู่ระบบอีกครั้ง</h2>
+      <p>ในการโจมตีจริง หน้าเว็บอาจเลียนแบบเว็บไซต์เดิมเพื่อหลอกให้ผู้ใช้กรอก Credential</p>
+      <label for="email">อีเมล</label>
+      <input id="email" type="email" placeholder="disabled@example.com" disabled>
+      <label for="password">รหัสผ่าน</label>
+      <input id="password" type="password" value="not-collected" disabled>
+      <button class="button secondary" type="button" disabled>ปิดการส่งข้อมูลใน Lab</button>
+    </section>
+
+    <a class="back" href="index.html">← กลับไปเริ่ม Lab ใหม่</a>
+  </main>
+</body>
+</html>
