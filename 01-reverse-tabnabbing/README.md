@@ -1,27 +1,39 @@
 # EP01 — Reverse Tabnabbing
 
-Lab นี้สาธิตว่าเว็บไซต์ปลายทางซึ่งเปิดในแท็บใหม่อาจใช้ `window.opener` เปลี่ยนหน้าเดิมให้กลายเป็นหน้า Phishing ได้อย่างไร และป้องกันด้วย `rel="noopener noreferrer"`
+![EP01 Reverse Tabnabbing — KOPE SOLUTION](./assets/ep01-reverse-tabnabbing-cover.png)
 
-> ใช้เพื่อการศึกษาในเครื่องของตนเองเท่านั้น ทุกหน้าใน Lab เป็นข้อมูลจำลอง
+> **แท็บเดิมถูกเปลี่ยนตอนไหน?**
+
+ลองนึกภาพว่าคุณเปิดลิงก์จากเว็บไซต์ที่เชื่อถือได้ไปอ่านข้อมูลในแท็บใหม่ เมื่อกลับมายังแท็บเดิม หน้าเว็บกลับแจ้งว่า Session หมดอายุและขอให้ Login อีกครั้ง
+
+ถ้าหน้านั้นไม่ใช่เว็บไซต์เดิม แต่เป็นหน้า Phishing ที่ถูกสับเปลี่ยนเข้ามา คุณจะสังเกตทันหรือไม่?
+
+Lab นี้จะพาโจมตี ทำความเข้าใจ ป้องกัน และทดสอบซ้ำแบบ Red Team, Blue Team และ Purple Team
+
+> **Attack → Understand → Defend → Retest**
+
+## Reverse Tabnabbing คืออะไร
+
+Reverse Tabnabbing เกิดขึ้นเมื่อหน้าเว็บที่เปิดในแท็บใหม่สามารถอ้างอิงกลับไปยังแท็บต้นทางผ่าน `window.opener` และสั่งให้แท็บเดิมเปลี่ยนไปยัง URL อื่น เช่น หน้า Login ปลอม
+
+```mermaid
+flowchart LR
+    A[เว็บไซต์ที่ผู้ใช้เชื่อถือ] -->|เปิดลิงก์ในแท็บใหม่| B[External Site]
+    B -->|เข้าถึง window.opener| C[เปลี่ยนแท็บเดิม]
+    C --> D[หน้า Phishing จำลอง]
+```
+
+Browser รุ่นใหม่จำนวนมากป้องกันลิงก์ `target="_blank"` โดยอัตโนมัติแล้ว Lab นี้จึงระบุ `rel="opener"` อย่างชัดเจนเพื่อจำลองพฤติกรรมที่ไม่ปลอดภัยให้เห็นได้สม่ำเสมอ
 
 ## สิ่งที่จะได้เรียนรู้
 
-- `target="_blank"` และ `window.opener` เกี่ยวข้องกันอย่างไร
-- วิธีพิสูจน์ช่องโหว่และเก็บหลักฐานแบบ Red Team
-- วิธีวิเคราะห์ แก้ไข และป้องกันการเกิดซ้ำแบบ Blue Team
-- วิธี Retest ร่วมกันแบบ Purple Team
+- ความสัมพันธ์ระหว่าง `target="_blank"` และ `window.opener`
+- วิธีค้นหาและพิสูจน์ช่องโหว่แบบ Red Team
+- วิธีวิเคราะห์ Root Cause และผลกระทบ
+- วิธีแก้ไขและเพิ่ม Guardrail แบบ Blue Team
+- วิธี Retest และปิด Finding แบบ Purple Team
 
-## เลือกเส้นทางการฝึก
-
-| บทบาท | เป้าหมาย | คู่มือ |
-| --- | --- | --- |
-| Red Team | ค้นหาจุดเสี่ยง สร้าง PoC ประเมินผลกระทบ และเขียน Finding | [Red Team Playbook](./docs/RED_TEAM.md) |
-| Blue Team | ตรวจสอบ Finding, Scope ระบบ, แก้ไข เพิ่ม Guardrail และ Regression Test | [Blue Team Playbook](./docs/BLUE_TEAM.md) |
-| Purple Team | นำ PoC เดิมมาทดสอบหลังแก้ไขและสรุปสิ่งที่ต้องปรับปรุงร่วมกัน | ใช้ Checklist จากทั้งสอง Playbook |
-
-## เริ่ม Lab
-
-เปิด Terminal ที่โฟลเดอร์ Repository แล้วรัน
+## เตรียม Lab
 
 ```bash
 cd 01-reverse-tabnabbing/demo
@@ -30,18 +42,29 @@ python -m http.server 8000
 
 จากนั้นเปิด <http://localhost:8000>
 
-> ไม่แนะนำให้เปิดไฟล์ด้วย `file://` เพราะ Browser อาจจัดการสิทธิ์และ Origin แตกต่างจาก Web Server
+> ควรรันผ่าน Web Server แทนการเปิดด้วย `file://` เพราะ Browser อาจจัดการ Origin และ Permission แตกต่างกัน
 
-## ทดลองแบบย่อ
+## 1. Attack — Red Team
 
-### 1. Attack — หน้า Vulnerable
+### Reconnaissance
+
+ค้นหาลิงก์ที่เปิดแท็บใหม่
+
+```bash
+rg -n 'target="_blank"' .
+```
+
+ตรวจว่าลิงก์มี `noopener` หรือไม่ ปลายทางอยู่ภายใต้การควบคุมของใคร และหน้าต้นทางเกี่ยวข้องกับ Login หรือข้อมูลสำคัญหรือไม่
+
+### Proof of Concept
 
 1. เลือก **ทดลองแบบ Vulnerable**
 2. เปิด External Site ในแท็บใหม่
-3. กด **จำลอง Reverse Tabnabbing**
-4. กลับไปดูแท็บเดิม ซึ่งจะถูกเปลี่ยนเป็นหน้า Phishing จำลอง
+3. ยืนยันว่าหน้าใหม่แสดง **พบ window.opener**
+4. กด **จำลอง Reverse Tabnabbing**
+5. กลับไปดูแท็บเดิม ซึ่งจะถูกเปลี่ยนเป็นหน้า Phishing จำลอง
 
-โค้ดที่ทำให้เกิดความเสี่ยง:
+โค้ดที่จำลองพฤติกรรมไม่ปลอดภัย:
 
 ```html
 <a href="attacker.html" target="_blank" rel="opener">
@@ -49,21 +72,33 @@ python -m http.server 8000
 </a>
 ```
 
-Lab ระบุ `rel="opener"` อย่างชัดเจนเพื่อให้สาธิตได้สม่ำเสมอ เนื่องจาก Browser รุ่นใหม่จำนวนมากป้องกันลิงก์ `target="_blank"` โดยอัตโนมัติแล้ว
-
-### 2. Understand — ต้นเหตุ
-
-เมื่อแท็บใหม่เข้าถึง `window.opener` ได้ จะสามารถสั่งให้แท็บเดิมเปลี่ยน URL ได้
+ตรวจใน DevTools Console:
 
 ```js
-window.opener.location.href = "phishing.html";
+Boolean(window.opener)
 ```
 
-ผู้ใช้อาจเชื่อว่าแท็บเดิมยังเป็นเว็บไซต์ที่ไว้ใจ และกรอกข้อมูลลงในหน้า Phishing ที่ถูกสับเปลี่ยนเข้ามา
+ผลที่คาดหวังในหน้า Vulnerable คือ `true`
 
-### 3. Defend — หน้า Safe
+PoC ของ Lab จะเปลี่ยนหน้าเท่าที่จำเป็นและไม่รับหรือบันทึก Credential ใด ๆ
 
-ตัดการเชื่อมโยงกับแท็บเดิมด้วย `noopener`
+## 2. Understand — Root Cause
+
+เมื่อหน้าใหม่ได้รับ `window.opener` จะสามารถสั่ง Navigation ของแท็บต้นทางได้
+
+```js
+if (window.opener && !window.opener.closed) {
+  window.opener.location.href = "phishing.html";
+}
+```
+
+ผู้ใช้อาจไม่เห็นขณะที่แท็บเดิมถูกเปลี่ยน และอาจเชื่อว่าหน้า Login จำลองคือเว็บไซต์เดิมที่ Session หมดอายุ
+
+ความเสี่ยงจะสูงขึ้นเมื่อหน้าต้นทางเกี่ยวข้องกับ Account หรือ Admin และ URL ปลายทางอยู่นอกการควบคุมขององค์กร
+
+## 3. Defend — Blue Team
+
+เพิ่ม `noopener noreferrer` เพื่อตัดการอ้างอิงกลับไปยังแท็บต้นทาง
 
 ```html
 <a href="attacker.html" target="_blank" rel="noopener noreferrer">
@@ -73,34 +108,50 @@ window.opener.location.href = "phishing.html";
 
 - `noopener` ทำให้หน้าใหม่ไม่ได้รับ `window.opener`
 - `noreferrer` ไม่ส่งค่า `Referer` และมีผลคล้าย `noopener` ใน Browser ที่รองรับ
+- ควรค้นหา Pattern เดียวกันทั้ง Codebase ไม่แก้เฉพาะจุดที่พบ
+- Frontend ขนาดใหญ่ควรใช้ Shared External Link Component และ Linter Rule
 
-### 4. Retest — ทดสอบซ้ำ
+## 4. Retest — Purple Team
 
-1. กลับหน้าแรกและเลือก **ทดลองแบบ Safe**
-2. เปิด External Site
-3. ยืนยันว่าหน้าใหม่แสดง **ไม่พบ window.opener**
-4. ยืนยันว่าแท็บเดิมไม่ถูกเปลี่ยน
-
-## Purple Team Exercise
-
-1. Red Team ส่ง Finding โดยใช้ Template ใน Playbook
-2. Blue Team ทำ PoC ซ้ำและค้นหา Pattern เดียวกันทั้ง Codebase
-3. Blue Team แก้ไขหน้า Vulnerable โดยไม่ดู `safe.html`
-4. Red Team ใช้ขั้นตอนเดิม Retest
-5. ทั้งสองทีมสรุป Root Cause, Detection Gap และ Guardrail ที่จะป้องกันการเกิดซ้ำ
+1. เปิดหน้า **Safe**
+2. เปิด External Site ในแท็บใหม่
+3. ยืนยันว่าหน้าแสดง **ไม่พบ window.opener**
+4. ยืนยันว่าปุ่มโจมตีถูกปิดใช้งาน
+5. ยืนยันว่าแท็บต้นทางไม่เปลี่ยน URL
 
 เงื่อนไขผ่าน Lab:
 
 ```text
 Boolean(window.opener) === false
-และแท็บต้นทางไม่เปลี่ยนเมื่อใช้ PoC เดิม
+แท็บต้นทางไม่เปลี่ยนเมื่อใช้ PoC เดิม
+Regression Test ผ่าน
 ```
+
+## ฝึกตามบทบาท
+
+| บทบาท | เป้าหมาย | คู่มือ |
+| --- | --- | --- |
+| Red Team | กำหนดขอบเขต ค้นหาจุดเสี่ยง สร้าง PoC เก็บหลักฐาน และเขียน Finding | [Red Team Playbook](./docs/RED_TEAM.md) |
+| Blue Team | ตรวจสอบ Finding, Scope ระบบ, แก้ไข เพิ่ม Guardrail และ Regression Test | [Blue Team Playbook](./docs/BLUE_TEAM.md) |
+| Purple Team | ใช้ PoC เดิม Retest และสรุป Detection Gap ร่วมกัน | ใช้ Checklist จากทั้งสอง Playbook |
+
+## ข้อควรระวัง
+
+> [!WARNING]
+> ใช้ Lab นี้กับ `localhost` หรือระบบที่ได้รับอนุญาตเท่านั้น
+
+- ห้ามทดลองกับเว็บไซต์หรือบุคคลอื่น
+- ห้ามใช้หรือเก็บ Credential จริง
+- ห้ามเผยแพร่หน้า Phishing สู่ Public Internet
+- หยุดการทดสอบทันทีเมื่อออกนอกขอบเขตที่กำหนด
 
 ## โครงสร้างไฟล์
 
 ```text
 01-reverse-tabnabbing/
 ├── README.md
+├── assets/
+│   └── ep01-reverse-tabnabbing-cover.png
 ├── docs/
 │   ├── RED_TEAM.md
 │   └── BLUE_TEAM.md
