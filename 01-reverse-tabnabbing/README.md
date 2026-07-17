@@ -2,167 +2,138 @@
 
 ![EP01 Reverse Tabnabbing — KOPE SOLUTION](./assets/ep01-reverse-tabnabbing-cover.png)
 
-> **แท็บเดิมถูกเปลี่ยนตอนไหน?**
+> **Build → Discover → Attack → Defend → Retest**
 
-ลองนึกภาพว่าคุณเปิดลิงก์จากเว็บไซต์ที่เชื่อถือได้ไปอ่านข้อมูลในแท็บใหม่ เมื่อกลับมายังแท็บเดิม หน้าเว็บกลับแจ้งว่า Session หมดอายุและขอให้ Login อีกครั้ง
+EP นี้จำลองสถานการณ์จริงด้วยเว็บไซต์สอง Origin
 
-ถ้าหน้านั้นไม่ใช่เว็บไซต์เดิม แต่เป็นหน้า Phishing ที่ถูกสับเปลี่ยนเข้ามา คุณจะสังเกตทันหรือไม่?
+| Site | URL | บทบาท |
+| --- | --- | --- |
+| Trusted Site | `localhost:8000/trusted-site/` | Web Developer สร้างและ Blue Team แก้ไข |
+| External Site | `localhost:9000/external-site/` | Partner Site ที่ Red Team จำลองการควบคุม |
 
-Lab นี้จะพาโจมตี ทำความเข้าใจ ป้องกัน และทดสอบซ้ำแบบ Red Team, Blue Team และ Purple Team
+## เงื่อนไขสำคัญของการโจมตี
 
-> **Attack → Understand → Defend → Retest**
+Hacker ไม่สามารถโจมตีได้เพียงเพราะพบ External Link แต่ต้องมีความสามารถรัน JavaScript บน External Site ก่อน เช่น
 
-## Reverse Tabnabbing คืออะไร
+- Hacker เป็นเจ้าของ External Site
+- External Site ถูก Compromise
+- Domain ปลายทางถูก Takeover
+- External Site มีช่องโหว่ที่ทำให้รัน JavaScript ได้
 
-Reverse Tabnabbing เกิดขึ้นเมื่อหน้าเว็บที่เปิดในแท็บใหม่สามารถอ้างอิงกลับไปยังแท็บต้นทางผ่าน `window.opener` และสั่งให้แท็บเดิมเปลี่ยนไปยัง URL อื่น เช่น หน้า Login ปลอม
+จากนั้น Hacker จึงตรวจจากฝั่ง External Site ว่า `window.opener` อ้างอิงกลับไปยัง Trusted Site ได้หรือไม่
 
 ```mermaid
 flowchart LR
-    A[เว็บไซต์ที่ผู้ใช้เชื่อถือ] -->|เปิดลิงก์ในแท็บใหม่| B[External Site]
-    B -->|เข้าถึง window.opener| C[เปลี่ยนแท็บเดิม]
-    C --> D[หน้า Phishing จำลอง]
+    A[Web Developer สร้าง Trusted Site] -->|เปิดแท็บใหม่| B[External Site]
+    B --> C{Hacker รัน JavaScript ได้?}
+    C -->|ไม่ได้| D[โจมตีไม่ได้]
+    C -->|ได้| E{พบ window.opener?}
+    E -->|ไม่พบ| F[ถูกป้องกัน]
+    E -->|พบ| G[เปลี่ยน Trusted Tab]
+    G --> H[Phishing Simulation]
 ```
 
-Browser รุ่นใหม่จำนวนมากป้องกันลิงก์ `target="_blank"` โดยอัตโนมัติแล้ว Lab นี้จึงระบุ `rel="opener"` อย่างชัดเจนเพื่อจำลองพฤติกรรมที่ไม่ปลอดภัยให้เห็นได้สม่ำเสมอ
+## Flow ของคลิป
 
-## สิ่งที่จะได้เรียนรู้
+| Part | บทบาท | สิ่งที่จะเขียน | คู่มือ |
+| --- | --- | --- | --- |
+| 1 | Web Developer | `trusted-site/index.html` และ External Link | [Web Developer](./docs/WEB_DEVELOPER.md) |
+| 2 | Red Team | `external-site/index.html`, JavaScript Payload และ `phishing.html` | [Red Team](./docs/RED_TEAM.md) |
+| 3 | Blue Team | แก้ Trusted Link และเพิ่ม Guardrail/Regression Test | [Blue Team](./docs/BLUE_TEAM.md) |
 
-- ความสัมพันธ์ระหว่าง `target="_blank"` และ `window.opener`
-- วิธีค้นหาและพิสูจน์ช่องโหว่แบบ Red Team
-- วิธีวิเคราะห์ Root Cause และผลกระทบ
-- วิธีแก้ไขและเพิ่ม Guardrail แบบ Blue Team
-- วิธี Retest และปิด Finding แบบ Purple Team
+## โครงสร้าง Lab
 
-## เตรียม Lab
+```text
+demo/
+├── trusted-site/
+│   └── index.html       # Web Developer / Blue Team
+├── external-site/
+│   ├── index.html       # Red Team
+│   └── phishing.html    # Red Team
+└── style.css            # ใช้ร่วมกันและไม่บังคับ
+```
+
+## เริ่ม Lab
+
+เปิด Terminal สองหน้า โดยรันจากโฟลเดอร์ `demo` ทั้งคู่
+
+Terminal 1 — Trusted Site:
 
 ```bash
-cd 01-reverse-tabnabbing/demo
 python -m http.server 8000
 ```
 
-จากนั้นเปิด <http://localhost:8000>
-
-> ควรรันผ่าน Web Server แทนการเปิดด้วย `file://` เพราะ Browser อาจจัดการ Origin และ Permission แตกต่างกัน
-
-## 1. Attack — Red Team
-
-### Reconnaissance
-
-ค้นหาลิงก์ที่เปิดแท็บใหม่
+Terminal 2 — External Site:
 
 ```bash
-rg -n 'target="_blank"' .
+python -m http.server 9000
 ```
 
-ตรวจว่าลิงก์มี `noopener` หรือไม่ ปลายทางอยู่ภายใต้การควบคุมของใคร และหน้าต้นทางเกี่ยวข้องกับ Login หรือข้อมูลสำคัญหรือไม่
+เปิด <http://localhost:8000/trusted-site/>
 
-### Proof of Concept
+## Part 1 — Web Developer
 
-1. เลือก **ทดลองแบบ Vulnerable**
-2. เปิด External Site ในแท็บใหม่
-3. ยืนยันว่าหน้าใหม่แสดง **พบ window.opener**
-4. กด **จำลอง Reverse Tabnabbing**
-5. กลับไปดูแท็บเดิม ซึ่งจะถูกเปลี่ยนเป็นหน้า Phishing จำลอง
-
-โค้ดที่จำลองพฤติกรรมไม่ปลอดภัย:
+Developer เขียนลิงก์ไปยัง External Site จริงคนละ Origin
 
 ```html
-<a href="attacker.html" target="_blank" rel="opener">
-  เปิด External Site
+<a href="http://localhost:9000/external-site/"
+   target="_blank"
+   rel="opener">
+  เปิดบทความในแท็บใหม่
 </a>
 ```
 
-ตรวจใน DevTools Console:
+Lab ใช้ `rel="opener"` เพื่อจำลองพฤติกรรมไม่ปลอดภัยอย่างชัดเจน เพราะ Browser รุ่นใหม่จำนวนมากป้องกัน `_blank` โดยอัตโนมัติแล้ว
+
+[สร้าง Trusted Site ทีละขั้น](./docs/WEB_DEVELOPER.md)
+
+## Part 2 — Red Team
+
+Red Team จำลองการควบคุม External Site แล้วตรวจใน Console
 
 ```js
 Boolean(window.opener)
 ```
 
-ผลที่คาดหวังในหน้า Vulnerable คือ `true`
-
-PoC ของ Lab จะเปลี่ยนหน้าเท่าที่จำเป็นและไม่รับหรือบันทึก Credential ใด ๆ
-
-## 2. Understand — Root Cause
-
-เมื่อหน้าใหม่ได้รับ `window.opener` จะสามารถสั่ง Navigation ของแท็บต้นทางได้
+เมื่อผลเป็น `true` จึงเพิ่ม Payload บน External Site
 
 ```js
-if (window.opener && !window.opener.closed) {
-  window.opener.location.href = "phishing.html";
-}
+const phishingUrl = new URL("phishing.html", location.href);
+window.opener.location.href = phishingUrl.href;
 ```
 
-ผู้ใช้อาจไม่เห็นขณะที่แท็บเดิมถูกเปลี่ยน และอาจเชื่อว่าหน้า Login จำลองคือเว็บไซต์เดิมที่ Session หมดอายุ
+Trusted Tab จะเปลี่ยนจาก Port `8000` ไปยังหน้า Phishing จำลองบน Port `9000`
 
-ความเสี่ยงจะสูงขึ้นเมื่อหน้าต้นทางเกี่ยวข้องกับ Account หรือ Admin และ URL ปลายทางอยู่นอกการควบคุมขององค์กร
+[ตรวจช่องโหว่และสร้าง PoC ทีละไฟล์](./docs/RED_TEAM.md)
 
-## 3. Defend — Blue Team
+## Part 3 — Blue Team
 
-เพิ่ม `noopener noreferrer` เพื่อตัดการอ้างอิงกลับไปยังแท็บต้นทาง
+Blue Team กลับไปแก้ Code ของ Trusted Site
 
 ```html
-<a href="attacker.html" target="_blank" rel="noopener noreferrer">
-  เปิด External Site อย่างปลอดภัย
+<a href="http://localhost:9000/external-site/"
+   target="_blank"
+   rel="noopener noreferrer">
+  เปิดบทความในแท็บใหม่
 </a>
 ```
 
-- `noopener` ทำให้หน้าใหม่ไม่ได้รับ `window.opener`
-- `noreferrer` ไม่ส่งค่า `Referer` และมีผลคล้าย `noopener` ใน Browser ที่รองรับ
-- ควรค้นหา Pattern เดียวกันทั้ง Codebase ไม่แก้เฉพาะจุดที่พบ
-- Frontend ขนาดใหญ่ควรใช้ Shared External Link Component และ Linter Rule
-
-## 4. Retest — Purple Team
-
-1. เปิดหน้า **Safe**
-2. เปิด External Site ในแท็บใหม่
-3. ยืนยันว่าหน้าแสดง **ไม่พบ window.opener**
-4. ยืนยันว่าปุ่มโจมตีถูกปิดใช้งาน
-5. ยืนยันว่าแท็บต้นทางไม่เปลี่ยน URL
-
-เงื่อนไขผ่าน Lab:
+จากนั้นใช้ External Site และ Payload เดิม Retest
 
 ```text
+PASS เมื่อ
 Boolean(window.opener) === false
-แท็บต้นทางไม่เปลี่ยนเมื่อใช้ PoC เดิม
-Regression Test ผ่าน
+Trusted Tab ยังคงอยู่บน Port 8000
 ```
 
-## ฝึกตามบทบาท
+[แก้ไขและ Retest ทีละขั้น](./docs/BLUE_TEAM.md)
 
-| บทบาท | เป้าหมาย | คู่มือ |
-| --- | --- | --- |
-| Red Team | กำหนดขอบเขต ค้นหาจุดเสี่ยง สร้าง PoC เก็บหลักฐาน และเขียน Finding | [Red Team Playbook](./docs/RED_TEAM.md) |
-| Blue Team | ตรวจสอบ Finding, Scope ระบบ, แก้ไข เพิ่ม Guardrail และ Regression Test | [Blue Team Playbook](./docs/BLUE_TEAM.md) |
-| Purple Team | ใช้ PoC เดิม Retest และสรุป Detection Gap ร่วมกัน | ใช้ Checklist จากทั้งสอง Playbook |
+## Guardrail ของ Lab
 
-## ข้อควรระวัง
-
-> [!WARNING]
-> ใช้ Lab นี้กับ `localhost` หรือระบบที่ได้รับอนุญาตเท่านั้น
-
-- ห้ามทดลองกับเว็บไซต์หรือบุคคลอื่น
-- ห้ามใช้หรือเก็บ Credential จริง
-- ห้ามเผยแพร่หน้า Phishing สู่ Public Internet
-- หยุดการทดสอบทันทีเมื่อออกนอกขอบเขตที่กำหนด
-
-## โครงสร้างไฟล์
-
-```text
-01-reverse-tabnabbing/
-├── README.md
-├── assets/
-│   └── ep01-reverse-tabnabbing-cover.png
-├── docs/
-│   ├── RED_TEAM.md
-│   └── BLUE_TEAM.md
-└── demo/
-    ├── index.html
-    ├── vulnerable.html
-    ├── safe.html
-    ├── attacker.html
-    ├── phishing.html
-    ├── attacker.js
-    └── styles.css
-```
+- ใช้เฉพาะ `localhost`
+- ใช้ข้อมูลสมมติเท่านั้น
+- ไม่มี `fetch`, Backend, Database หรือ Storage
+- External Site แสดง Debug Panel เพื่อการเรียนรู้
+- ห้ามเผยแพร่ Lab สู่ Public Internet
 
 [กลับไปหน้าหลัก](../README.md)

