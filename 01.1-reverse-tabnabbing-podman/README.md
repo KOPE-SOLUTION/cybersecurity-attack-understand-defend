@@ -53,16 +53,41 @@ sequenceDiagram
 ## สิ่งที่ต้องมี
 
 - Podman
-- Compose provider ที่ใช้กับ `podman compose`
+- Compose provider เช่น `podman-compose`
 - Browser ที่เปิด DevTools ได้
 
-ตรวจสอบก่อนเริ่ม:
+โปรเจกต์นี้ใช้ `compose.yaml` ตาม Compose Specification และใช้ `podman compose` เป็นคำสั่งหลัก ส่วน Provider เป็นรายละเอียดภายในที่ Podman เรียกให้อัตโนมัติ
+
+### ตั้งค่า Provider บน Linux / WSL
+
+ตรวจสอบก่อนว่า `podman-compose` พร้อมใช้งาน:
 
 ```bash
 podman --version
+podman-compose version
+```
+
+กำหนดให้ `podman compose` ใช้ Provider จาก Linux แทน `docker-compose.exe` ของ Windows:
+
+```bash
+export PODMAN_COMPOSE_PROVIDER="$(command -v podman-compose)"
+```
+
+หากต้องการให้มีผลทุกครั้งที่เปิด Terminal:
+
+```bash
+echo 'export PODMAN_COMPOSE_PROVIDER="$(command -v podman-compose)"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+จากนั้นตรวจสอบคำสั่งมาตรฐาน:
+
+```bash
 podman compose version
 ```
 
+> [!NOTE]
+> ถ้า `podman compose version` แสดง path ใต้ `/mnt/c/Program Files/Docker/` แปลว่า Podman เลือก Docker Compose จาก Windows ผิดตัว ให้ตั้ง `PODMAN_COMPOSE_PROVIDER` ตามขั้นตอนด้านบน
 ## เริ่ม Lab
 
 จากโฟลเดอร์นี้ให้รัน:
