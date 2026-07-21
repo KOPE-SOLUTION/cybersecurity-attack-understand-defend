@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="เข้าสู่ระบบ KOPE CloudOps — Trusted Site สำหรับ Reverse Tabnabbing Lab">
+  <title>Sign in — KOPE CloudOps</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="auth-layout">
+    <section class="auth-art">
+      <div class="auth-copy">
+        <p class="eyebrow">KOPE CloudOps</p>
+        <h1>Secure access.<br><span class="gradient-text">One workspace.</span></h1>
+        <p class="lead">บริหาร Cloud workload, Security Insight และ Incident response จากศูนย์กลางเดียว</p>
+      </div>
+    </section>
+
+    <section class="auth-form-wrap">
+      <form id="login" class="auth-form" autocomplete="off">
+        <span class="pill"><span class="dot"></span> TRUSTED ORIGIN · :8100</span>
+        <h2 style="margin-top: 22px">เข้าสู่ระบบ</h2>
+        <p class="muted">ใช้บัญชี Lab เพื่อเข้าสู่ KOPE CloudOps Portal</p>
+
+        <label for="username">Username สมมติ</label>
+        <input id="username" name="username" value="demo-user" autocomplete="username" required>
+
+        <label for="password">Password สมมติ</label>
+        <input id="password" name="password" type="password" placeholder="กรอกข้อมูลสมมติเท่านั้น" autocomplete="current-password" required>
+
+        <button class="button" type="submit">เข้าสู่ CloudOps Portal</button>
+        <p class="lab-notice"><strong>Authorized lab:</strong> ไม่มี Authentication Backend ข้อมูลในฟอร์มจะไม่ถูกส่งหรือบันทึก</p>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    document.querySelector("#login").addEventListener("submit", (event) => {
+      event.preventDefault();
+      window.location.href = "/portal.html";
+    });
+  </script>
+</body>
+</html>

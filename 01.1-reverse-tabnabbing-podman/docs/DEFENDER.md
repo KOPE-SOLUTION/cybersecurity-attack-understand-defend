@@ -1,0 +1,79 @@
+# Part 2 — Defender Playbook
+
+Defender รับ Finding และหลักฐานจาก Hacker แล้วแก้ที่ Root Cause ของ Trusted Site โดยใช้ Payload เดิมเป็น Regression Test
+
+## 1. Reproduce ก่อนแก้
+
+ยืนยันให้ครบว่า Hacker Console แสดง `EXPOSED`, `Boolean(window.opener)` เป็น `true` และ Trusted Tab ถูกเปลี่ยนไป Port `9100`
+
+## 2. หา Scope
+
+```bash
+rg -n 'target="_blank"' demo/trusted-site
+rg -n 'rel="opener"' demo/trusted-site
+rg -n 'window\.open' demo/trusted-site
+```
+
+ในระบบจริงควรค้นหาทั้ง Source tree และตรวจ Shared Component ที่สร้าง External Link
+
+## 3. แก้ Root Cause
+
+ไฟล์ `demo/trusted-site/portal.html`
+
+ก่อนแก้:
+
+```html
+<a href="http://localhost:9100/"
+   target="_blank"
+   rel="opener">
+```
+
+หลังแก้:
+
+```html
+<a href="http://localhost:9100/"
+   target="_blank"
+   rel="noopener noreferrer">
+```
+
+- `noopener` ทำให้หน้าใหม่ไม่ได้รับ Reference กลับไปยัง Trusted Tab
+- `noreferrer` ไม่ส่ง HTTP `Referer` ไปยัง External Site และมีผลตัด opener ใน Browser ที่รองรับ
+
+## 4. Rebuild และ Redeploy
+
+```bash
+podman compose up -d --build trusted-site
+podman compose ps
+```
+
+Source ถูกบรรจุใน Image ด้วย `COPY` จึงต้อง build Image และ replace Container ก่อน Code ใหม่จะมีผล
+
+## 5. Retest ด้วย Payload เดิม
+
+1. ปิด External Tab เดิมทั้งหมด
+2. Hard reload Trusted Site
+3. เปิดลิงก์เดิมในแท็บใหม่
+4. ยืนยันว่า Hacker Console แสดง `BLOCKED`
+5. ตรวจใน Console:
+
+```js
+Boolean(window.opener)
+```
+
+ผลต้องเป็น `false` และ Trusted Tab ต้องไม่เปลี่ยน URL หลังรอเกิน 5 วินาที
+
+## 6. Production guardrails
+
+- ใช้ Shared External Link Component ที่ใส่ `noopener noreferrer` เป็นค่าเริ่มต้น
+- ใช้ Linter เช่น `react/jsx-no-target-blank` สำหรับ React project
+- เพิ่ม Browser regression test สำหรับลิงก์ที่เปิดแท็บใหม่
+- ตรวจ Link จาก CMS, Markdown renderer และ User-generated content
+- กำหนด Browser/WebView support policy เพราะพฤติกรรมค่าเริ่มต้นต่างกันตามรุ่น
+
+## Closure criteria
+
+- [ ] `Boolean(window.opener) === false`
+- [ ] Hacker Console แสดง `BLOCKED`
+- [ ] Trusted Tab ยังคงอยู่บน Port `8100`
+- [ ] Payload เดิมไม่สำเร็จ
+- [ ] มีหลักฐานก่อนและหลังแก้ครบ

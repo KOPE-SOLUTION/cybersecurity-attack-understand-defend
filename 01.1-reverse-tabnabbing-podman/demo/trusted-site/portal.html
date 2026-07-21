@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="KOPE CloudOps Portal — เว็บไซต์สมมติสำหรับ Reverse Tabnabbing Lab">
+  <title>KOPE CloudOps Portal</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <nav class="shell nav" aria-label="เมนูหลัก">
+      <div class="brand"><span class="brand-mark">K</span> KOPE CloudOps</div>
+      <div class="nav-links"><a href="#overview">Overview</a><a href="#insights">Insights</a><a href="#activity">Activity</a></div>
+      <div class="environment"><span class="dot"></span> Production healthy</div>
+    </nav>
+  </header>
+
+  <main class="shell">
+    <section id="overview">
+      <p class="eyebrow">Trusted Site · localhost:8100</p>
+      <h1>Operate clearly.<br><span class="gradient-text">Respond confidently.</span></h1>
+      <p class="lead">พอร์ทัลติดตามระบบ Cloud สำหรับทีมปฏิบัติการ ดูสถานะ Service, Security Insight และบทความจาก Technology Partner ได้ในที่เดียว</p>
+      <div class="actions"><a class="button" href="#insights">ดู Security Insight ↓</a><a class="button secondary" href="#activity">เปิด Activity log</a></div>
+    </section>
+
+    <section class="grid" aria-label="ภาพรวมระบบ">
+      <article class="card metric span-4"><div class="metric-label">Service uptime</div><div class="metric-value">99.98%</div><div class="metric-note">↑ 0.06% this month</div></article>
+      <article class="card metric span-4"><div class="metric-label">Protected workloads</div><div class="metric-value">128</div><div class="metric-note">All policies active</div></article>
+      <article class="card metric span-4"><div class="metric-label">Open incidents</div><div class="metric-value">2</div><div class="metric-note">Within response SLA</div></article>
+
+      <article id="insights" class="card article-preview span-8">
+        <p class="eyebrow">Partner insight · 8 min read</p>
+        <h2>7 วิธีลด Attack Surface ของ Cloud-native Application</h2>
+        <p>บทความแนะนำประจำสัปดาห์จาก Orbit Security Labs ซึ่งเป็น Technology Partner ภายนอก</p>
+        <!-- VULNERABLE LAB CODE: Defender will replace opener with noopener noreferrer. -->
+        <a class="button" href="http://localhost:9100/" target="_blank" rel="opener">อ่านบทความจาก Partner ↗</a>
+      </article>
+
+      <aside id="activity" class="card card-body span-4">
+        <h3>Recent activity</h3>
+        <ul class="list">
+          <li><span class="icon">✓</span><span><strong>Policy deployed</strong><small>API Gateway · 4 นาทีที่แล้ว</small></span></li>
+          <li><span class="icon">↻</span><span><strong>Backup completed</strong><small>Customer DB · 18 นาทีที่แล้ว</small></span></li>
+          <li><span class="icon">⌁</span><span><strong>Certificate renewed</strong><small>Edge Proxy · 1 ชั่วโมงที่แล้ว</small></span></li>
+        </ul>
+      </aside>
+    </section>
+
+    <p class="lab-notice"><strong>Authorized security lab:</strong> เว็บไซต์และข้อมูลทั้งหมดเป็นเรื่องสมมติ ใช้งานเฉพาะบน localhost เท่านั้น</p>
+  </main>
+
+  <footer><div class="shell">KOPE SOLUTION · Cybersecurity Attack, Understand &amp; Defend · EP1.1 Lab</div></footer>
+</body>
+</html>
