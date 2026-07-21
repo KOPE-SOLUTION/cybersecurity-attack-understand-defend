@@ -88,6 +88,7 @@ podman compose version
 
 > [!NOTE]
 > ถ้า `podman compose version` แสดง path ใต้ `/mnt/c/Program Files/Docker/` แปลว่า Podman เลือก Docker Compose จาก Windows ผิดตัว ให้ตั้ง `PODMAN_COMPOSE_PROVIDER` ตามขั้นตอนด้านบน
+
 ## เริ่ม Lab
 
 จากโฟลเดอร์นี้ให้รัน:
@@ -169,13 +170,35 @@ Trusted Tab: ยังคงอยู่ที่ http://localhost:8100
 Payload เดิม: ไม่สามารถเปลี่ยน Trusted Tab ได้
 ```
 
-## หยุด Lab
+## หยุดและลบ Lab
+
+### หยุด Lab แต่เก็บ Image ไว้
 
 ```bash
 podman compose down
 ```
 
-คำสั่งนี้หยุดและลบ Container/Network ของ Lab แต่ยังเก็บ Image ไว้เพื่อเปิดใช้งานครั้งต่อไปได้รวดเร็ว
+คำสั่งนี้หยุดและลบ Container กับ Network ของ Lab แต่ยังเก็บ Image ไว้ ทำให้การเปิดครั้งต่อไปเร็วขึ้น
+
+### ลบ Container, Network และ Image ของ Lab
+
+```bash
+podman compose down
+podman image rm \
+  localhost/kope-ep01-1-trusted:lab \
+  localhost/kope-ep01-1-external:lab
+```
+
+คำสั่งนี้ระบุชื่อ Image ของ EP1.1 โดยตรง จึงไม่ลบ Image อื่นในเครื่อง หาก Container ยังใช้งาน Image อยู่ ต้องรัน `podman compose down` ให้สำเร็จก่อน
+
+ตรวจสอบหลัง Cleanup:
+
+```bash
+podman ps -a --filter name=kope-ep01-1
+podman images --filter reference='localhost/kope-ep01-1-*'
+```
+
+เมื่อ Cleanup สมบูรณ์ ทั้งสองคำสั่งไม่ควรแสดง Container หรือ Image ของ EP1.1
 
 ## โครงสร้างไฟล์
 
