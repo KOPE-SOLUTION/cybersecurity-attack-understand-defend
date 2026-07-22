@@ -20,7 +20,7 @@ EP1.1 ไม่แทนที่ EP1 แต่เป็นสถานการ
 
 ## Scenario
 
-KOPE CloudOps Portal แนะนำบทความจาก Orbit Security Labs ซึ่งเริ่มต้นเป็น Partner Site ปกติ จากนั้น Hacker จำลองการเข้าควบคุม Source, เพิ่ม JavaScript Payload และ rebuild External Site เมื่อลิงก์จาก Portal เปิดแท็บใหม่ด้วย `rel="opener"` เว็บไซต์ที่ถูกแก้ไขจึงใช้ `window.opener` เปลี่ยนหน้า Portal เดิมให้เป็นหน้า Login ปลอมได้
+KOPE CloudOps Portal แนะนำบทความจาก Orbit Security Labs ซึ่งเริ่มต้นเป็น Partner Site ปกติ จากนั้น Hacker จำลองการเข้าควบคุม Source, เพิ่ม JavaScript Payload แบบเงียบและ rebuild External Site เมื่อลิงก์จาก Portal เปิดแท็บใหม่ด้วย `rel="opener"` เว็บไซต์ที่ถูกแก้ไขจึงใช้ `window.opener` เปลี่ยนหน้า Portal เดิมให้เป็นหน้า Login ปลอมได้
 
 ```mermaid
 sequenceDiagram
@@ -30,7 +30,7 @@ sequenceDiagram
     participant Hacker
     participant Defender
 
-    Hacker->>External: เพิ่ม Console และ Payload
+    Hacker->>External: เพิ่ม silent hacker.js
     Hacker->>External: Rebuild External Container
     User->>Trusted: เปิด CloudOps Portal
     User->>External: เปิดบทความในแท็บใหม่
@@ -40,7 +40,7 @@ sequenceDiagram
     Defender->>Trusted: ใช้ noopener noreferrer
     Defender->>Trusted: Rebuild container
     User->>External: Retest ด้วย Payload เดิม
-    External-->>User: BLOCKED และแท็บเดิมไม่เปลี่ยน
+    External-->>User: Payload จบเงียบและแท็บเดิมไม่เปลี่ยน
 ```
 
 ## Architecture
@@ -48,7 +48,7 @@ sequenceDiagram
 | Service | URL | Compose service | หน้าที่ |
 | --- | --- | --- | --- |
 | Trusted Site | <http://localhost:8100> | `trusted-site` | หน้า Login จริงและ CloudOps Portal ที่มีช่องโหว่ |
-| External Site | <http://localhost:9100> | `external-site` | เริ่มจาก Partner Site ปกติ แล้ว Hacker เพิ่ม Console และ Payload |
+| External Site | <http://localhost:9100> | `external-site` | เริ่มจาก Partner Site ปกติ แล้ว Hacker เพิ่ม Payload แบบไม่แสดง UI |
 
 ทั้งสองเว็บใช้ Nginx คนละ Container และคนละ Origin โดย publish port เฉพาะ `127.0.0.1`
 
@@ -153,14 +153,14 @@ podman compose ps
 
 รายละเอียด: [HACKER.md](./docs/HACKER.md)
 
-1. เปิด Partner Site ที่ Port `9100` และยืนยันว่ายังไม่มี Payload
-2. Hacker แก้ `demo/external-site/index.html` เพื่อเพิ่ม Hacker Console
-3. Hacker สร้าง `demo/external-site/hacker.js` และเพิ่ม `window.opener` Payload
-4. Rebuild เฉพาะ External Site แล้วทดสอบว่าเปิดโดยตรงจะแสดง `BLOCKED`
+1. เปิด Partner Site ที่ Port `9100` และยืนยันว่าเป็นเว็บปกติ
+2. Hacker เพิ่ม Script loader เพียงหนึ่งบรรทัดใน `demo/external-site/index.html`
+3. Hacker สร้าง `demo/external-site/hacker.js` ให้ตรวจ `window.opener` และ Redirect อยู่เบื้องหลัง
+4. Rebuild External Site แล้วทำ Negative Test โดยเปิด URL ตรง ๆ
 5. เปิดหน้า Login จริงที่ Port `8100` และใช้ข้อมูลสมมติเข้าสู่ Portal
 6. เปิดบทความ Partner ผ่านลิงก์ของ Portal
-7. Hacker Console จะแสดง `EXPOSED` และ Payload เปลี่ยน Trusted Tab หลัง 5 วินาที
-8. เปรียบเทียบหน้า Login ปลอมกับหน้า Login จริง โดยให้ความสำคัญกับ Address Bar
+7. หน้า Partner ยังคงเหมือนเดิม แต่ `hacker.js` เปลี่ยน Trusted Tab หลัง 5 วินาที
+8. ใช้ DevTools, Address Bar และพฤติกรรมของแท็บเป็นหลักฐานแทนป้ายสถานะบนหน้าเว็บ
 
 ## จุดสังเกตหน้า Login จริงกับหน้าปลอม
 
@@ -175,11 +175,10 @@ podman compose ps
 
 หลักฐานที่ควรถ่ายในคลิป:
 
-- Partner Site ก่อนและหลัง Hacker แก้ Code
-- Diff ของ `index.html` และ `hacker.js`
-- ผล rebuild ของ External Site
-- สถานะ `BLOCKED` เมื่อเปิด External Site โดยตรง
-- สถานะ `EXPOSED` เมื่อเปิดผ่าน Trusted Site
+- Partner Site ก่อนและหลังเพิ่ม Script มีหน้าตาเหมือนเดิม
+- Diff ของ Script loader และ `hacker.js`
+- Negative Test: `Boolean(window.opener) === false` เมื่อเปิด URL โดยตรง
+- Attack Test: `Boolean(window.opener) === true` เมื่อเปิดผ่าน Portal
 - URL ของแท็บเดิมก่อนและหลัง Payload ทำงาน
 - Source ของลิงก์ที่มี `rel="opener"`
 
@@ -209,19 +208,18 @@ podman compose up -d --build --force-recreate trusted-site
 
 ## Part 3 — Retest
 
-1. ปิดแท็บ External Site เดิมเพื่อไม่ใช้ `window.opener` เก่า
-2. Hard reload หน้า Trusted Site
-3. เปิดบทความจาก Partner อีกครั้ง
-4. Hacker Console ต้องแสดง `BLOCKED`
-5. รอเกิน 5 วินาทีและยืนยันว่า Trusted Tab ยังอยู่ที่ Port `8100`
+1. ปิด External Tab เดิมทั้งหมด
+2. Hard reload Trusted Site และเข้าสู่ Portal ใหม่
+3. เปิดบทความ Partner ผ่านลิงก์เดิม
+4. ตรวจใน DevTools Console ของ External Site ว่า `Boolean(window.opener)` เป็น `false`
+5. รอเกิน 5 วินาทีและยืนยันว่า Trusted Tab ยังอยู่บน Port `8100`
 
 ### Closure criteria
 
 ```text
 External Site: Boolean(window.opener) === false
-Hacker Console: BLOCKED
 Trusted Tab: ยังคงอยู่ที่ http://localhost:8100
-Payload เดิม: ไม่สามารถเปลี่ยน Trusted Tab ได้
+Silent payload เดิม: ไม่สามารถเปลี่ยน Trusted Tab ได้
 ```
 
 ## หยุดและลบ Lab
@@ -272,7 +270,7 @@ podman images --filter reference='localhost/kope-ep01-1-*'
     └── external-site/
         ├── index.html              # Partner Site ปกติ
         ├── session-expired.html    # Login ปลอมสำหรับ Lab
-        └── hacker.js               # ผู้เรียนสร้างในบท Hacker
+        └── hacker.js               # Silent payload ที่ผู้เรียนสร้าง
 ```
 
 ## ขอบเขตและข้อจำกัด
