@@ -99,6 +99,7 @@ h2, h3, p { margin-top: 0; }
 .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 18px; margin-top: 52px; }
 .card { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); backdrop-filter: blur(12px); }
 .card-body { padding: 24px; }
+.span-12 { grid-column: 1 / -1; }
 .span-8 { grid-column: span 8; }
 .span-7 { grid-column: span 7; }
 .span-6 { grid-column: span 6; }

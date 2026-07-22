@@ -20,7 +20,7 @@ EP1.1 ไม่แทนที่ EP1 แต่เป็นสถานการ
 
 ## Scenario
 
-KOPE CloudOps Portal แนะนำบทความจาก Orbit Security Labs ซึ่งเป็น Partner ภายนอก ลิงก์เปิดแท็บใหม่ด้วย `rel="opener"` หากเว็บ Partner ถูกยึด ผู้โจมตีสามารถใช้ `window.opener` เปลี่ยนหน้า Portal เดิมให้เป็นหน้า Login ปลอมได้
+KOPE CloudOps Portal แนะนำบทความจาก Orbit Security Labs ซึ่งเริ่มต้นเป็น Partner Site ปกติ จากนั้น Hacker จำลองการเข้าควบคุม Source, เพิ่ม JavaScript Payload และ rebuild External Site เมื่อลิงก์จาก Portal เปิดแท็บใหม่ด้วย `rel="opener"` เว็บไซต์ที่ถูกแก้ไขจึงใช้ `window.opener` เปลี่ยนหน้า Portal เดิมให้เป็นหน้า Login ปลอมได้
 
 ```mermaid
 sequenceDiagram
@@ -30,6 +30,8 @@ sequenceDiagram
     participant Hacker
     participant Defender
 
+    Hacker->>External: เพิ่ม Console และ Payload
+    Hacker->>External: Rebuild External Container
     User->>Trusted: เปิด CloudOps Portal
     User->>External: เปิดบทความในแท็บใหม่
     External-->>Hacker: window.opener พร้อมใช้งาน
@@ -46,7 +48,7 @@ sequenceDiagram
 | Service | URL | Container | หน้าที่ |
 | --- | --- | --- | --- |
 | Trusted Site | <http://localhost:8100> | `kope-ep01-1-trusted` | หน้า Login จริงและ CloudOps Portal ที่มีช่องโหว่ |
-| External Site | <http://localhost:9100> | `kope-ep01-1-external` | Partner Site, Hacker Console และ Payload |
+| External Site | <http://localhost:9100> | `kope-ep01-1-external` | เริ่มจาก Partner Site ปกติ แล้ว Hacker เพิ่ม Console และ Payload |
 
 ทั้งสองเว็บใช้ Nginx คนละ Container และคนละ Origin โดย publish port เฉพาะ `127.0.0.1`
 
@@ -104,29 +106,34 @@ podman compose ps
 
 รายละเอียด: [HACKER.md](./docs/HACKER.md)
 
-1. เปิดหน้า Login จริงที่ Port 8100 และจดจำ URL/หน้าตา
-2. ใช้ข้อมูลสมมติเข้าสู่ CloudOps Portal
-3. กด **อ่านบทความจาก Partner** เพื่อเปิด Port 9100 ในแท็บใหม่
-4. Hacker Console จะแสดง EXPOSED เพราะพบ window.opener
-5. รอ 5 วินาที แล้วกลับไปแท็บเดิม
-6. แท็บเดิมถูกเปลี่ยนเป็น /session-expired.html บน Port 9100
-7. เปรียบเทียบหน้า Login ปลอมกับหน้า Login จริง โดยให้ความสำคัญกับ Address Bar
+1. เปิด Partner Site ที่ Port `9100` และยืนยันว่ายังไม่มี Payload
+2. Hacker แก้ `demo/external-site/index.html` เพื่อเพิ่ม Hacker Console
+3. Hacker สร้าง `demo/external-site/hacker.js` และเพิ่ม `window.opener` Payload
+4. Rebuild เฉพาะ External Site แล้วทดสอบว่าเปิดโดยตรงจะแสดง `BLOCKED`
+5. เปิดหน้า Login จริงที่ Port `8100` และใช้ข้อมูลสมมติเข้าสู่ Portal
+6. เปิดบทความ Partner ผ่านลิงก์ของ Portal
+7. Hacker Console จะแสดง `EXPOSED` และ Payload เปลี่ยน Trusted Tab หลัง 5 วินาที
+8. เปรียบเทียบหน้า Login ปลอมกับหน้า Login จริง โดยให้ความสำคัญกับ Address Bar
 
 ## จุดสังเกตหน้า Login จริงกับหน้าปลอม
 
 | สิ่งที่สังเกต | Login จริง | Login ปลอม |
 | --- | --- | --- |
-| URL / Origin | http://localhost:8100 | http://localhost:9100 |
+| URL / Origin | `http://localhost:8100` | `http://localhost:9100` |
 | จังหวะที่ปรากฏ | ผู้ใช้เปิดและเข้าสู่ระบบเอง | โผล่แทนแท็บเดิมหลังเปิดเว็บ Partner |
 | ข้อความ | เข้าสู่ระบบตามปกติ | อ้างว่า Session หมดอายุและขอให้กรอกซ้ำ |
 | หน้าตา | สี โลโก้ และ Layout ของจริง | เลียนแบบได้เกือบทั้งหมด |
 
 **URL/Origin เป็นหลักฐานสำคัญที่สุดใน Lab นี้** ส่วนสี โลโก้ ข้อความ และ Layout สามารถถูกคัดลอกได้ ในระบบจริงควรตรวจ Domain, HTTPS/Certificate และใช้ Password Manager ซึ่งจะผูก Credential กับ Origin เดิม
+
 หลักฐานที่ควรถ่ายในคลิป:
 
-- URL ของทั้งสองแท็บก่อนโจมตี
-- สถานะ `EXPOSED` ใน Hacker Console
-- URL ของแท็บเดิมหลัง Payload ทำงาน
+- Partner Site ก่อนและหลัง Hacker แก้ Code
+- Diff ของ `index.html` และ `hacker.js`
+- ผล rebuild ของ External Site
+- สถานะ `BLOCKED` เมื่อเปิด External Site โดยตรง
+- สถานะ `EXPOSED` เมื่อเปิดผ่าน Trusted Site
+- URL ของแท็บเดิมก่อนและหลัง Payload ทำงาน
 - Source ของลิงก์ที่มี `rel="opener"`
 
 ## Part 2 — Defender
@@ -216,8 +223,9 @@ podman images --filter reference='localhost/kope-ep01-1-*'
     │   ├── index.html       # หน้า Login จริง
     │   └── portal.html      # Dashboard และลิงก์ที่มีช่องโหว่
     └── external-site/
-        ├── index.html
-        └── session-expired.html
+        ├── index.html              # Partner Site ปกติ
+        ├── session-expired.html    # Login ปลอมสำหรับ Lab
+        └── hacker.js               # ผู้เรียนสร้างในบท Hacker
 ```
 
 ## ขอบเขตและข้อจำกัด

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Orbit Security Labs — External Site สำหรับ Reverse Tabnabbing Lab">
+  <meta name="description" content="Orbit Security Labs — External Partner Site สำหรับ Reverse Tabnabbing Lab">
   <title>Cloud Attack Surface Report — Orbit Security Labs</title>
   <link rel="stylesheet" href="/style.css">
 </head>
@@ -11,14 +11,14 @@
   <header class="topbar">
     <nav class="shell nav" aria-label="เมนูหลัก">
       <div class="brand"><span class="brand-mark">O</span> Orbit Security Labs</div>
-      <div class="nav-links"><a href="#report">Research</a><a href="#lab">Threat Lab</a><a href="#about">About</a></div>
+      <div class="nav-links"><a href="#report">Research</a><a href="#findings">Findings</a><a href="#about">About</a></div>
       <span class="pill warning">External Partner</span>
     </nav>
   </header>
 
   <main class="shell">
     <section id="report">
-      <p class="eyebrow">Threat research · 21 July 2026</p>
+      <p class="eyebrow">Threat research · 22 July 2026</p>
       <h1>Cloud attack surface:<br><span class="gradient-text">what defenders miss.</span></h1>
       <p class="lead">ข้อมูลสรุปสำหรับ Security และ Platform Team เพื่อค้นหา Exposure ที่มักหลุดจากการตรวจสอบตามปกติ</p>
     </section>
@@ -31,54 +31,21 @@
         <ul class="list">
           <li><span class="icon">01</span><span><strong>Inventory external trust</strong><small>รู้ว่าระบบเปิดลิงก์หรือส่งข้อมูลไปที่ใดบ้าง</small></span></li>
           <li><span class="icon">02</span><span><strong>Assume partner compromise</strong><small>ออกแบบให้ปลายทางที่ถูกยึดไม่ย้อนกลับมาควบคุมระบบเรา</small></span></li>
-          <li><span class="icon">03</span><span><strong>Retest every control</strong><small>พิสูจน์ด้วย Payload เดิมว่าการแก้ไขหยุดการโจมตีได้จริง</small></span></li>
+          <li><span class="icon">03</span><span><strong>Retest every control</strong><small>พิสูจน์ว่าการแก้ไขหยุดพฤติกรรมเดิมได้จริง</small></span></li>
         </ul>
       </article>
 
-      <aside id="lab" class="card status-panel span-5">
-        <div class="status-row"><div><p class="eyebrow">Hacker console</p><h2>Opener probe</h2></div><span id="probe-pill" class="pill warning">Checking…</span></div>
-        <p id="probe-message" class="muted" aria-live="polite">กำลังตรวจสอบ reference กลับไปยัง Trusted Site</p>
-        <pre class="code">const hasOpener = Boolean(window.opener);
-if (hasOpener) {
-  window.opener.location = "/session-expired.html";
-}</pre>
-        <p id="countdown" class="countdown"></p>
+      <aside id="findings" class="card card-body span-5">
+        <p class="eyebrow">Research status</p>
+        <h2>Q3 field report</h2>
+        <p class="muted">รายงานฉบับนี้ผ่านการทบทวนโดย Cloud Security Research Team และเผยแพร่สำหรับ Technology Partner แล้ว</p>
+        <div class="status-row"><span>Published report</span><span class="pill">ONLINE</span></div>
       </aside>
     </section>
 
-    <p class="lab-notice"><strong>Authorized lab:</strong> Payload นี้ทำงานเฉพาะเว็บสมมติบน localhost และไม่เก็บข้อมูลผู้ใช้</p>
+    <p class="lab-notice"><strong>Authorized lab:</strong> เว็บไซต์นี้เป็น Partner Site สมมติและเปิดเฉพาะบน localhost</p>
   </main>
 
   <footer id="about"><div class="shell">Orbit Security Labs · Simulated external partner for KOPE EP1.1</div></footer>
-
-  <script>
-    const pill = document.querySelector("#probe-pill");
-    const message = document.querySelector("#probe-message");
-    const countdown = document.querySelector("#countdown");
-    const hasOpener = Boolean(window.opener && !window.opener.closed);
-
-    if (!hasOpener) {
-      pill.className = "pill";
-      pill.textContent = "BLOCKED";
-      message.textContent = "ไม่พบ window.opener — Defender ตัด reference สำเร็จ";
-      countdown.textContent = "Payload หยุดทำงาน Trusted Tab ยังคงปลอดภัย";
-    } else {
-      pill.className = "pill danger";
-      pill.textContent = "EXPOSED";
-      message.textContent = "พบ window.opener — External Site อ้างอิงกลับไปยัง Trusted Tab ได้";
-      let seconds = 5;
-      countdown.textContent = `จะเปลี่ยน Trusted Tab ใน ${seconds} วินาที`;
-      const timer = window.setInterval(() => {
-        seconds -= 1;
-        if (seconds === 0) {
-          window.clearInterval(timer);
-          window.opener.location.href = new URL("/session-expired.html", window.location.href).href;
-          countdown.textContent = "Payload ทำงานแล้ว — กลับไปดู Trusted Tab";
-          return;
-        }
-        countdown.textContent = `จะเปลี่ยน Trusted Tab ใน ${seconds} วินาที`;
-      }, 1000);
-    }
-  </script>
 </body>
 </html>

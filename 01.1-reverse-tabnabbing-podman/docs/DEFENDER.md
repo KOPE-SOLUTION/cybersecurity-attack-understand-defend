@@ -2,6 +2,10 @@
 
 Defender รับ Finding และหลักฐานจาก Hacker แล้วแก้ที่ Root Cause ของ Trusted Site โดยใช้ Payload เดิมเป็น Regression Test
 
+## ก่อนเริ่ม Defender
+
+ใช้ External Site เวอร์ชันที่ Hacker เพิ่ม `hacker.js` และ rebuild แล้วเป็น Regression Test ห้ามลบ Payload หรือคืน External Site เป็นเวอร์ชันปกติเพื่อทำให้ผลทดสอบผ่าน Defender ต้องแก้เฉพาะ Trusted Site
+
 ## 1. Reproduce ก่อนแก้
 
 ยืนยันให้ครบว่า Hacker Console แสดง `EXPOSED`, `Boolean(window.opener)` เป็น `true` และ Trusted Tab ถูกเปลี่ยนไป Port `9100`
