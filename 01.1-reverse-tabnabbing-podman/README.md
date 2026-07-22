@@ -120,6 +120,24 @@ ss -ltnp | grep -E ':8100|:9100'
 
 สำหรับ `podman-compose 1.0.x` คำสั่ง rebuild ในคู่มือนี้ใส่ `--force-recreate` เพื่อให้ Container ใช้ Image ที่ build ใหม่แทนการพยายาม start Container เก่า
 
+### กรณีมี Podman ทั้งบน Windows และใน WSL
+
+Podman Machine ฝั่ง Windows และ Native Podman ภายใน WSL เป็นคนละ Container Engine จึงมีรายการ Container แยกกัน แต่ WSL สามารถมองเห็น Port บน `localhost` ที่ Windows publish ไว้ได้ ผลคือ `podman ps` ใน WSL อาจไม่พบ Container ทั้งที่ Port `8100` หรือ `9100` ยังถูกใช้งาน
+
+ตรวจ Native Podman ภายใน WSL:
+
+```bash
+podman ps -a --format 'table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}'
+```
+
+จากนั้นเปิด PowerShell ฝั่ง Windows และตรวจ Podman Machine อีกชุด:
+
+```powershell
+podman ps -a --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}"
+```
+
+หากพบว่า Container ฝั่ง Windows ใช้ Port ของ Lab ให้หยุดหรือลบเฉพาะ Container นั้นจาก PowerShell ก่อนกลับมารัน Lab ใน WSL ไม่ควรเปิด Lab เดียวกันพร้อมกันจาก Podman ทั้งสอง Engine
+
 ## เริ่ม Lab
 
 จากโฟลเดอร์นี้ให้รัน:
