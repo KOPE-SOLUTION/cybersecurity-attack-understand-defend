@@ -129,7 +129,7 @@ Code แบ่งเป็นสองเส้นทาง:
 การแก้ Source บน Host ยังไม่เปลี่ยน Container ที่กำลังรัน เพราะไฟล์ถูก `COPY` เข้า Image ตอน Build ให้ rebuild เฉพาะ External Site:
 
 ```bash
-podman compose up -d --build external-site
+podman compose up -d --build --force-recreate external-site
 podman compose ps
 ```
 

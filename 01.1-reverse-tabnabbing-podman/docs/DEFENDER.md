@@ -46,7 +46,7 @@ rg -n 'window\.open' demo/trusted-site
 ## 4. Rebuild และ Redeploy
 
 ```bash
-podman compose up -d --build trusted-site
+podman compose up -d --build --force-recreate trusted-site
 podman compose ps
 ```
 

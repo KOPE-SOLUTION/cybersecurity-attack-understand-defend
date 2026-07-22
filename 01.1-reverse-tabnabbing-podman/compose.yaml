@@ -6,7 +6,6 @@ services:
       args:
         SITE_DIR: trusted-site
     image: localhost/kope-ep01-1-trusted:lab
-    container_name: kope-ep01-1-trusted
     ports:
       - "127.0.0.1:8100:80"
     restart: unless-stopped
@@ -18,7 +17,6 @@ services:
       args:
         SITE_DIR: external-site
     image: localhost/kope-ep01-1-external:lab
-    container_name: kope-ep01-1-external
     ports:
       - "127.0.0.1:9100:80"
     restart: unless-stopped

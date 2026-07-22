@@ -45,10 +45,10 @@ sequenceDiagram
 
 ## Architecture
 
-| Service | URL | Container | หน้าที่ |
+| Service | URL | Compose service | หน้าที่ |
 | --- | --- | --- | --- |
-| Trusted Site | <http://localhost:8100> | `kope-ep01-1-trusted` | หน้า Login จริงและ CloudOps Portal ที่มีช่องโหว่ |
-| External Site | <http://localhost:9100> | `kope-ep01-1-external` | เริ่มจาก Partner Site ปกติ แล้ว Hacker เพิ่ม Console และ Payload |
+| Trusted Site | <http://localhost:8100> | `trusted-site` | หน้า Login จริงและ CloudOps Portal ที่มีช่องโหว่ |
+| External Site | <http://localhost:9100> | `external-site` | เริ่มจาก Partner Site ปกติ แล้ว Hacker เพิ่ม Console และ Payload |
 
 ทั้งสองเว็บใช้ Nginx คนละ Container และคนละ Origin โดย publish port เฉพาะ `127.0.0.1`
 
@@ -90,6 +90,35 @@ podman compose version
 
 > [!NOTE]
 > ถ้า `podman compose version` แสดง path ใต้ `/mnt/c/Program Files/Docker/` แปลว่า Podman เลือก Docker Compose จาก Windows ผิดตัว ให้ตั้ง `PODMAN_COMPOSE_PROVIDER` ตามขั้นตอนด้านบน
+
+## แก้ปัญหา Container ชื่อซ้ำหรือ Port ถูกใช้งาน
+
+โปรเจกต์รุ่นปัจจุบันไม่กำหนด `container_name` แบบตายตัวแล้ว Compose จะสร้างชื่อ Container ตาม Project และ Service เพื่อลดการชนกันระหว่างโฟลเดอร์หรือการ Clone หลายชุด
+
+หากเคยใช้รุ่นก่อนที่มี Container ชื่อ `kope-ep01-1-*` ให้ Cleanup ชื่อเดิมหนึ่งครั้ง:
+
+```bash
+podman compose down
+podman rm -f \
+  kope-ep01-1-trusted \
+  kope-ep01-1-external 2>/dev/null || true
+```
+
+ตรวจว่า Port `8100` หรือ `9100` ถูก Container อื่นใช้อยู่หรือไม่:
+
+```bash
+podman ps --format '{{.ID}}  {{.Names}}  {{.Ports}}' | grep -E '8100|9100'
+```
+
+ตรวจ Process อื่นบน Linux / WSL:
+
+```bash
+ss -ltnp | grep -E ':8100|:9100'
+```
+
+หากพบรายการ ให้ตรวจชื่อ Container หรือ Process ก่อนหยุด ห้าม kill Process โดยไม่ทราบว่าเป็นของระบบใด หากเป็น Container เก่าของ Lab จึงค่อยลบด้วย `podman rm -f <container-name>`
+
+สำหรับ `podman-compose 1.0.x` คำสั่ง rebuild ในคู่มือนี้ใส่ `--force-recreate` เพื่อให้ Container ใช้ Image ที่ build ใหม่แทนการพยายาม start Container เก่า
 
 ## เริ่ม Lab
 
@@ -155,7 +184,7 @@ target="_blank" rel="noopener noreferrer"
 จากนั้น rebuild เฉพาะ Trusted Site:
 
 ```bash
-podman compose up -d --build trusted-site
+podman compose up -d --build --force-recreate trusted-site
 ```
 
 การแก้ไฟล์บน Host อย่างเดียวยังไม่เปลี่ยน Container ที่รันอยู่ เพราะ Source ถูก `COPY` เข้า Image ในขั้นตอน build จุดนี้เป็นบทเรียนสำคัญของตอนพิเศษ
@@ -201,7 +230,7 @@ podman image rm \
 ตรวจสอบหลัง Cleanup:
 
 ```bash
-podman ps -a --filter name=kope-ep01-1
+podman compose ps
 podman images --filter reference='localhost/kope-ep01-1-*'
 ```
 
